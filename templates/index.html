@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width-device-width, initial-scale=1.0">
+        <title>Data Analysis Dashboard</title>
+    </head>
+    <body>
+        <h1>CSV Data Analysis Dashboard</h1>
+        <p>Upload a CSV file to start analysis</p>
+
+        <form action="/" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" id=".csv">
+            <button type="submit">Upload</button>
+        </form>
+
+        {% if file_name %}
+        <hr>
+        <h2>File Information</h2>
+        <p><strong>File Name:</strong> {{ file_name }}</p>
+         <p><strong>Number of Columns:</strong> {{ num_cols }}</p>
+          <h3>Column Names</h3>
+        <ul>
+            {% for column in column_names %}
+                <li>{{ column }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>First 5 Rows</h3>
+        {{ preview_data | safe }}
+        {% endif %}
+        {% if missing_values %}
+    <h3>Missing Values</h3>
+    {{ missing_values | safe }}
+{% endif %}
+
+{% if summary_stats %}
+    <h3>Summary Statistics</h3>
+    {{ summary_stats | safe }}
+{% endif %}
+    </body>
+</html>
+    

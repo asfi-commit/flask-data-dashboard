@@ -1,0 +1,13 @@
+Name,Age,Gender,Department,Salary,Experience,City
+Amit,25,Male,IT,40000,2,Kolkata
+Riya,30,Female,HR,50000,5,Delhi
+Rahul,28,Male,Finance,45000,3,Mumbai
+Sneha,35,Female,IT,60000,8,Bangalore
+Arjun,40,Male,Management,80000,12,Chennai
+Pooja,27,Female,HR,48000,4,Kolkata
+Vikram,32,Male,Finance,52000,6,Delhi
+Anjali,29,Female,IT,55000,5,Mumbai
+Rohit,31,Male,Management,70000,9,Bangalore
+Meena,26,Female,HR,,3,Chennai
+Karan,33,Male,Finance,58000,,Kolkata
+Neha,,Female,IT,62000,7,Delhi

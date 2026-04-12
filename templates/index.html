@@ -1,43 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width-device-width, initial-scale=1.0">
-        <title>Data Analysis Dashboard</title>
-    </head>
-    <body>
-        <h1>CSV Data Analysis Dashboard</h1>
-        <p>Upload a CSV file to start analysis</p>
+<head>
+    <!-- Basic page settings -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <!-- Page title shown in browser tab -->
+    <title>CSV Data Analysis Dashboard</title>
+
+    <!-- External CSS file from static folder -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Main wrapper/container -->
+    <div class="container">
+
+        <!-- Project heading -->
+        <h1>CSV Data Analysis Dashboard</h1>
+        <p>Upload a CSV file and explore the data.</p>
+
+        <!-- Error message block -->
+        <!-- This appears only if Flask sends an error string -->
+        {% if error %}
+            <div style="color: red; margin-bottom: 15px;">
+                <strong>{{ error }}</strong>
+            </div>
+        {% endif %}
+
+        <!-- -----------------------------------------
+             File Upload Form
+             enctype is required for file uploads
+        ------------------------------------------ -->
         <form action="/" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" id=".csv">
-            <button type="submit">Upload</button>
+            <input type="file" name="file" accept=".csv">
+            <button type="submit">Upload CSV</button>
         </form>
 
+        <!-- Show analysis section only if a file/data exists -->
         {% if file_name %}
-        <hr>
-        <h2>File Information</h2>
-        <p><strong>File Name:</strong> {{ file_name }}</p>
-         <p><strong>Number of Columns:</strong> {{ num_cols }}</p>
-          <h3>Column Names</h3>
-        <ul>
-            {% for column in column_names %}
-                <li>{{ column }}</li>
-            {% endfor %}
-        </ul>
+            <hr>
 
-        <h3>First 5 Rows</h3>
-        {{ preview_data | safe }}
+            <!-- Basic file information -->
+            <h2>File Information</h2>
+            <p><strong>File Name:</strong> {{ file_name }}</p>
+            <p><strong>Number of Rows:</strong> {{ num_rows }}</p>
+            <p><strong>Number of Columns:</strong> {{ num_cols }}</p>
+
+            <!-- Column names -->
+            <h3>Column Names</h3>
+            <ul>
+                {% for column in column_names %}
+                    <li>{{ column }}</li>
+                {% endfor %}
+            </ul>
+
+            <!-- Preview of first 5 rows -->
+            <h3>First 5 Rows</h3>
+            {% if preview_data %}
+                {{ preview_data | safe }}
+            {% endif %}
+
+            <!-- Missing values table -->
+            <h3>Missing Values</h3>
+            {% if missing_values %}
+                {{ missing_values | safe }}
+            {% endif %}
+
+            <!-- Summary statistics table -->
+            <h3>Summary Statistics</h3>
+            {% if summary_stats %}
+                {{ summary_stats | safe }}
+            {% endif %}
+
+            <!-- -----------------------------------------
+                 Chart Generation Form
+                 This form does not upload a new file.
+                 It uses the previously saved CSV.
+            ------------------------------------------ -->
+            {% if plottable_columns %}
+                <h3>Generate Chart</h3>
+                <form action="/" method="POST">
+
+                    <!-- Column selection dropdown -->
+                    <label for="selected_column">Select Column:</label>
+                    <select name="selected_column" id="selected_column">
+                        {% for col in plottable_columns %}
+                            <option value="{{ col }}" {% if col == selected_column %}selected{% endif %}>
+                                {{ col }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <!-- Chart type dropdown -->
+                    <label for="chart_type">Select Chart Type:</label>
+                    <select name="chart_type" id="chart_type">
+                        <option value="histogram" {% if chart_type == 'histogram' %}selected{% endif %}>
+                            Histogram
+                        </option>
+                        <option value="bar" {% if chart_type == 'bar' %}selected{% endif %}>
+                            Bar Chart
+                        </option>
+                    </select>
+
+                    <!-- Submit chart generation request -->
+                    <button type="submit">Generate Chart</button>
+                </form>
+
+                <!-- User guidance -->
+                <p>
+                    <strong>Note:</strong>
+                    Histogram works only for numeric columns.
+                    Bar chart works for both numeric and categorical columns.
+                </p>
+            {% endif %}
+
+            <!-- Generated chart image -->
+            {% if chart_filename %}
+                <h3>Chart</h3>
+                <img src="{{ url_for('static', filename=chart_filename) }}" alt="Generated Chart">
+            {% endif %}
+
+            <!-- Correlation heatmap image -->
+            {% if heatmap_filename %}
+                <h3>Correlation Heatmap</h3>
+                <img src="{{ url_for('static', filename=heatmap_filename) }}" alt="Correlation Heatmap">
+            {% endif %}
         {% endif %}
-        {% if missing_values %}
-    <h3>Missing Values</h3>
-    {{ missing_values | safe }}
-{% endif %}
-
-{% if summary_stats %}
-    <h3>Summary Statistics</h3>
-    {{ summary_stats | safe }}
-{% endif %}
-    </body>
+    </div>
+</body>
 </html>
-    

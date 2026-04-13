@@ -2,3 +2,6 @@ venv/
 __pycache__/
 *.pyc
 uploads/*
+static/chart.png
+static/heatmap.png
+instance/*.db

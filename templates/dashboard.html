@@ -3,14 +3,102 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <h1>Welcome to the Dashboard</h1>
-
-    <p>Hello, <strong>{{ user.username }}</strong>!</p>
+    <h1>CSV Data Analysis Dashboard</h1>
+    <p>Welcome, <strong>{{ user.username }}</strong>!</p>
     <p>Your email: {{ user.email }}</p>
-
-    <p>This dashboard is now protected by login authentication.</p>
 
     <p>
         <a href="{{ url_for('auth.logout') }}">Logout</a>
     </p>
+
+    <hr>
+
+    <form action="{{ url_for('dashboard.home') }}" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv">
+        <button type="submit">Upload CSV</button>
+    </form>
+
+    {% if file_name %}
+        <hr>
+
+        <h2>File Information</h2>
+        <p><strong>File Name:</strong> {{ file_name }}</p>
+        <p><strong>Number of Rows:</strong> {{ num_rows }}</p>
+        <p><strong>Number of Columns:</strong> {{ num_cols }}</p>
+
+        <p>
+            <a href="{{ url_for('dashboard.download_file') }}">
+                <button type="button">Download Current CSV</button>
+            </a>
+        </p>
+
+        <h3>Column Names</h3>
+        <ul>
+            {% for column in column_names %}
+                <li>{{ column }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Dataset Info</h3>
+        {% if dataset_info %}
+            {{ dataset_info | safe }}
+        {% endif %}
+
+        <h3>First 5 Rows</h3>
+        {% if preview_data %}
+            {{ preview_data | safe }}
+        {% endif %}
+
+        <h3>Missing Values</h3>
+        {% if missing_values %}
+            {{ missing_values | safe }}
+        {% endif %}
+
+        <h3>Summary Statistics</h3>
+        {% if summary_stats %}
+            {{ summary_stats | safe }}
+        {% endif %}
+
+        {% if plottable_columns %}
+            <h3>Generate Chart</h3>
+            <form action="{{ url_for('dashboard.home') }}" method="POST">
+                <label for="selected_column">Select Column:</label>
+                <select name="selected_column" id="selected_column">
+                    {% for col in plottable_columns %}
+                        <option value="{{ col }}" {% if col == selected_column %}selected{% endif %}>
+                            {{ col }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <label for="chart_type">Select Chart Type:</label>
+                <select name="chart_type" id="chart_type">
+                    <option value="histogram" {% if chart_type == 'histogram' %}selected{% endif %}>
+                        Histogram
+                    </option>
+                    <option value="bar" {% if chart_type == 'bar' %}selected{% endif %}>
+                        Bar Chart
+                    </option>
+                </select>
+
+                <button type="submit">Generate Chart</button>
+            </form>
+
+            <p>
+                <strong>Note:</strong>
+                Histogram works only for numeric columns.
+                Bar chart works for both numeric and categorical columns.
+            </p>
+        {% endif %}
+
+        {% if chart_filename %}
+            <h3>Chart</h3>
+            <img src="{{ url_for('static', filename=chart_filename) }}" alt="Generated Chart">
+        {% endif %}
+
+        {% if heatmap_filename %}
+            <h3>Correlation Heatmap</h3>
+            <img src="{{ url_for('static', filename=heatmap_filename) }}" alt="Correlation Heatmap">
+        {% endif %}
+    {% endif %}
 {% endblock %}

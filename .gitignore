@@ -1,9 +1,11 @@
 venv/
 __pycache__/
 *.pyc
+
 uploads/*
-static/chart.png
-static/heatmap.png
 instance/*.db
+
+static/user_*/
+
 test.py
 old_app_backup.py

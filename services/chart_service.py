@@ -2,10 +2,10 @@ import os
 import matplotlib
 
 # --------------------------------------------------
-# Use a non-GUI backend for Flask applications
+# Use non-GUI backend for Flask apps
 # --------------------------------------------------
-# This avoids Tkinter / main loop errors on Windows
-# and allows matplotlib to save images directly to files.
+# This prevents Tkinter-related errors and allows
+# saving plots directly to files.
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
@@ -13,16 +13,28 @@ import seaborn as sns
 
 
 # --------------------------------------------------
-# Helper function: Save matplotlib figure safely
+# Utility: Ensure folder exists
+# --------------------------------------------------
+def ensure_folder_exists(folder_path):
+    """
+    Create a folder if it does not exist.
+
+    Parameters:
+        folder_path -> path of the folder
+    """
+    os.makedirs(folder_path, exist_ok=True)
+
+
+# --------------------------------------------------
+# Utility: Save plot safely
 # --------------------------------------------------
 def save_plot(figure, output_path):
     """
-    Save a matplotlib figure to the given file path
-    and close it properly to free memory.
+    Save matplotlib figure and close it to free memory.
 
     Parameters:
-        figure      -> matplotlib figure object
-        output_path -> full path where image will be saved
+        figure      -> matplotlib figure
+        output_path -> file path to save image
     """
     figure.tight_layout()
     figure.savefig(output_path)
@@ -30,22 +42,22 @@ def save_plot(figure, output_path):
 
 
 # --------------------------------------------------
-# Helper function: Generate histogram
+# Create Histogram
 # --------------------------------------------------
 def create_histogram(df, selected_column):
     """
-    Create a histogram for a numeric column.
+    Create histogram for numeric column.
 
     Parameters:
         df              -> pandas DataFrame
         selected_column -> numeric column name
 
     Returns:
-        figure -> matplotlib figure object
+        fig -> matplotlib figure
     """
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    # Drop missing values before plotting
+    # Remove missing values before plotting
     df[selected_column].dropna().plot(kind="hist", bins=20, ax=ax)
 
     ax.set_title(f"Histogram of {selected_column}")
@@ -56,26 +68,26 @@ def create_histogram(df, selected_column):
 
 
 # --------------------------------------------------
-# Helper function: Generate bar chart
+# Create Bar Chart
 # --------------------------------------------------
 def create_bar_chart(df, selected_column):
     """
-    Create a bar chart for a column using top 10 value counts.
+    Create bar chart using top 10 value counts.
 
     Works for:
     - categorical columns
-    - numeric columns (as category-like counts)
+    - numeric columns (converted to string)
 
     Parameters:
         df              -> pandas DataFrame
         selected_column -> column name
 
     Returns:
-        figure -> matplotlib figure object
+        fig -> matplotlib figure
     """
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    # Convert values to string so both numeric and categorical columns work safely
+    # Convert values to string to handle mixed types safely
     value_counts = df[selected_column].astype(str).value_counts().head(10)
 
     value_counts.plot(kind="bar", ax=ax)
@@ -91,58 +103,57 @@ def create_bar_chart(df, selected_column):
 
 
 # --------------------------------------------------
-# Main chart generator
+# Main Chart Generator
 # --------------------------------------------------
-def generate_chart(df, selected_column, chart_type, numeric_columns, static_folder):
+def generate_chart(df, selected_column, chart_type, numeric_columns, static_folder, user_id):
     """
-    Generate a chart based on selected chart type.
-
-    Supported chart types:
-    - histogram (numeric columns only)
-    - bar (numeric or categorical columns)
+    Generate a chart and save it in a user-specific folder.
 
     Parameters:
         df              -> pandas DataFrame
-        selected_column -> selected column name
+        selected_column -> column selected by user
         chart_type      -> 'histogram' or 'bar'
         numeric_columns -> list of numeric columns
         static_folder   -> Flask static folder path
+        user_id         -> current logged-in user ID
 
     Returns:
-        chart_filename -> saved image filename or None
+        chart_filename -> relative path for Flask
         error          -> error message or None
     """
     chart_filename = None
     error = None
 
-    # Validate selected column
+    # Validate column
     if not selected_column:
-        return None, "No column selected for chart generation."
+        return None, "No column selected for chart."
 
     try:
-        # ------------------------------------------
-        # Histogram: only numeric columns allowed
-        # ------------------------------------------
+        # -------------------------------
+        # Histogram (only numeric)
+        # -------------------------------
         if chart_type == "histogram":
             if selected_column not in numeric_columns:
-                return None, "Histogram can only be generated for numeric columns."
-
+                return None, "Histogram only works for numeric columns."
             fig = create_histogram(df, selected_column)
 
-        # ------------------------------------------
-        # Bar chart: works for both numeric and categorical columns
-        # ------------------------------------------
+        # -------------------------------
+        # Bar chart
+        # -------------------------------
         elif chart_type == "bar":
             fig = create_bar_chart(df, selected_column)
 
-        # ------------------------------------------
-        # Invalid chart type
-        # ------------------------------------------
         else:
-            return None, "Invalid chart type selected."
+            return None, "Invalid chart type."
 
-        # Save chart image
-        chart_filename = "chart.png"
+        # -------------------------------
+        # Create user-specific folder
+        # -------------------------------
+        user_static_folder = os.path.join(static_folder, f"user_{user_id}")
+        ensure_folder_exists(user_static_folder)
+
+        # Save chart
+        chart_filename = f"user_{user_id}/chart.png"
         chart_path = os.path.join(static_folder, chart_filename)
 
         save_plot(fig, chart_path)
@@ -154,35 +165,32 @@ def generate_chart(df, selected_column, chart_type, numeric_columns, static_fold
 
 
 # --------------------------------------------------
-# Heatmap generator
+# Heatmap Generator
 # --------------------------------------------------
-def generate_heatmap(df, numeric_columns, static_folder):
+def generate_heatmap(df, numeric_columns, static_folder, user_id):
     """
-    Generate a correlation heatmap using numeric columns.
-
-    Heatmap is created only if at least 2 numeric columns exist.
+    Generate correlation heatmap.
 
     Parameters:
         df              -> pandas DataFrame
-        numeric_columns -> list of numeric columns
-        static_folder   -> Flask static folder path
+        numeric_columns -> numeric columns list
+        static_folder   -> Flask static folder
+        user_id         -> current user ID
 
     Returns:
-        heatmap_filename -> saved image filename or None
+        heatmap_filename -> relative file path
         error            -> error message or None
     """
     heatmap_filename = None
     error = None
 
-    # Need at least 2 numeric columns for meaningful correlation
+    # Need at least 2 numeric columns
     if len(numeric_columns) < 2:
         return None, None
 
     try:
-        # Compute correlation matrix
         correlation_matrix = df[numeric_columns].corr()
 
-        # Create figure
         fig, ax = plt.subplots(figsize=(8, 6))
 
         sns.heatmap(
@@ -195,8 +203,12 @@ def generate_heatmap(df, numeric_columns, static_folder):
 
         ax.set_title("Correlation Heatmap")
 
-        # Save heatmap image
-        heatmap_filename = "heatmap.png"
+        # Create user-specific folder
+        user_static_folder = os.path.join(static_folder, f"user_{user_id}")
+        ensure_folder_exists(user_static_folder)
+
+        # Save heatmap
+        heatmap_filename = f"user_{user_id}/heatmap.png"
         heatmap_path = os.path.join(static_folder, heatmap_filename)
 
         save_plot(fig, heatmap_path)

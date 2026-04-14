@@ -1,17 +1,10 @@
 import os
 import pandas as pd
 
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    current_app,
-    send_file
-)
-
+from flask import Blueprint, render_template, request, current_app, send_file
 from flask_login import login_required, current_user
 
-# Import reusable analysis helper functions
+# Import analysis services
 from services.analysis_service import (
     generate_preview_table,
     generate_missing_values_table,
@@ -20,89 +13,89 @@ from services.analysis_service import (
     get_column_groups,
 )
 
-# Import reusable chart helper functions
-from services.chart_service import (
-    generate_chart,
-    generate_heatmap,
-)
+# Import chart services
+from services.chart_service import generate_chart, generate_heatmap
 
-# Create blueprint for dashboard-related routes
+# Create blueprint
 dashboard_bp = Blueprint("dashboard", __name__)
 
 
 # --------------------------------------------------
-# Helper function: Load DataFrame from request
+# Utility: Ensure folder exists
 # --------------------------------------------------
-def load_dataframe_from_request(uploaded_file, saved_csv_path):
+def ensure_folder_exists(folder_path):
     """
-    Load a pandas DataFrame either from:
-    1. a newly uploaded CSV file, or
-    2. the previously saved CSV file.
+    Create folder if it does not exist.
+    """
+    os.makedirs(folder_path, exist_ok=True)
 
-    Parameters:
-        uploaded_file   -> file object from Flask request
-        saved_csv_path  -> path to stored CSV file
 
-    Returns:
-        df        -> pandas DataFrame or None
-        file_name -> uploaded filename or fallback saved filename
-        error     -> error message or None
+# --------------------------------------------------
+# Get user-specific upload folder
+# --------------------------------------------------
+def get_user_upload_folder():
+    """
+    Returns upload folder for current user.
+
+    Example:
+        uploads/user_1/
+    """
+    user_folder = os.path.join(
+        current_app.config["UPLOAD_FOLDER"],
+        f"user_{current_user.id}"
+    )
+    ensure_folder_exists(user_folder)
+    return user_folder
+
+
+# --------------------------------------------------
+# Load DataFrame from request or saved file
+# --------------------------------------------------
+def load_dataframe(uploaded_file, saved_csv_path):
+    """
+    Load DataFrame from:
+    - uploaded file OR
+    - previously saved file
     """
     df = None
     file_name = None
     error = None
 
-    # Case 1: User uploads a new CSV file
-    if uploaded_file and uploaded_file.filename.strip() != "":
+    if uploaded_file and uploaded_file.filename.strip():
         try:
-            # Read uploaded CSV into DataFrame
             df = pd.read_csv(uploaded_file)
-
-            # Save a reusable copy for later chart generation / download
             df.to_csv(saved_csv_path, index=False)
-
-            # Keep original uploaded filename for display
             file_name = uploaded_file.filename
-
         except Exception as e:
-            error = f"Error reading uploaded CSV file: {e}"
+            error = f"Error reading CSV: {e}"
 
-    # Case 2: No new file uploaded, use previously saved CSV
     elif os.path.exists(saved_csv_path):
-        try:
-            df = pd.read_csv(saved_csv_path)
-            file_name = current_app.config["LAST_UPLOADED_FILE"]
+        df = pd.read_csv(saved_csv_path)
+        file_name = "Previously Uploaded File"
 
-        except Exception as e:
-            error = f"Error loading previously uploaded CSV file: {e}"
-
-    # Case 3: No file exists at all
     else:
-        error = "Please upload a CSV file first."
+        error = "Please upload a CSV file."
 
     return df, file_name, error
 
 
 # --------------------------------------------------
-# Main dashboard route
+# Main Dashboard Route
 # --------------------------------------------------
 @dashboard_bp.route("/", methods=["GET", "POST"])
 @login_required
 def home():
     """
-    Protected dashboard route.
+    Main dashboard view.
 
     Features:
-    - Only logged-in users can access
     - Upload CSV
-    - Display dataset information
-    - Show preview, missing values, summary statistics
-    - Generate chart
-    - Generate correlation heatmap
+    - Data analysis
+    - Chart generation
+    - Heatmap generation
     """
 
-    # Context dictionary sent to HTML template
-    # Centralized so template rendering stays clean and scalable
+    # Context dictionary passed to template
     context = {
         "user": current_user,
         "file_name": None,
@@ -123,142 +116,100 @@ def home():
         "error": None,
     }
 
-    # Path to the reusable "latest uploaded" CSV file
+    # User-specific upload path
+    user_upload_folder = get_user_upload_folder()
+
     saved_csv_path = os.path.join(
-        current_app.config["UPLOAD_FOLDER"],
+        user_upload_folder,
         current_app.config["LAST_UPLOADED_FILE"]
     )
 
-    # Process form submission only when request is POST
     if request.method == "POST":
-        # File comes from upload form
         uploaded_file = request.files.get("file")
-
-        # Chart settings come from chart-generation form
         selected_column = request.form.get("selected_column")
         chart_type = request.form.get("chart_type", "histogram")
 
-        # Store user selections in context
         context["selected_column"] = selected_column
         context["chart_type"] = chart_type
 
-        # Load DataFrame from uploaded file or previously stored file
-        df, file_name, error = load_dataframe_from_request(uploaded_file, saved_csv_path)
+        df, file_name, error = load_dataframe(uploaded_file, saved_csv_path)
 
-        # Store file information / initial error if any
         context["file_name"] = file_name
         context["error"] = error
 
-        # Continue only if DataFrame loaded successfully
         if df is not None:
-            try:
-                # ------------------------------------------
-                # Basic dataset details
-                # ------------------------------------------
-                context["num_rows"], context["num_cols"] = df.shape
-                context["column_names"] = df.columns.tolist()
+            # Dataset info
+            context["num_rows"], context["num_cols"] = df.shape
+            context["column_names"] = df.columns.tolist()
 
-                # ------------------------------------------
-                # Generate analysis outputs
-                # ------------------------------------------
-                context["preview_data"] = generate_preview_table(df)
-                context["missing_values"] = generate_missing_values_table(df)
-                context["summary_stats"] = generate_summary_statistics(df)
-                context["dataset_info"] = generate_dataset_info(df)
+            # Analysis
+            context["preview_data"] = generate_preview_table(df)
+            context["missing_values"] = generate_missing_values_table(df)
+            context["summary_stats"] = generate_summary_statistics(df)
+            context["dataset_info"] = generate_dataset_info(df)
 
-                # ------------------------------------------
-                # Detect column groups
-                # ------------------------------------------
-                numeric_columns, categorical_columns, plottable_columns = get_column_groups(df)
+            # Column grouping
+            numeric_columns, categorical_columns, plottable_columns = get_column_groups(df)
 
-                context["numeric_columns"] = numeric_columns
-                context["categorical_columns"] = categorical_columns
-                context["plottable_columns"] = plottable_columns
+            context["numeric_columns"] = numeric_columns
+            context["categorical_columns"] = categorical_columns
+            context["plottable_columns"] = plottable_columns
 
-                # ------------------------------------------
-                # Set default selected column safely
-                # ------------------------------------------
-                # On first upload, there is usually no selected column yet.
-                # Prefer numeric column for histogram by default.
-                if not context["selected_column"] or context["selected_column"] not in plottable_columns:
-                    if numeric_columns:
-                        context["selected_column"] = numeric_columns[0]
-                    elif plottable_columns:
-                        context["selected_column"] = plottable_columns[0]
+            # Default column selection
+            if not selected_column:
+                if numeric_columns:
+                    selected_column = numeric_columns[0]
+                elif plottable_columns:
+                    selected_column = plottable_columns[0]
 
-                # ------------------------------------------
-                # Debug prints (useful during development)
-                # Remove later if you want a cleaner terminal
-                # ------------------------------------------
-                print("Numeric columns:", numeric_columns)
-                print("Categorical columns:", categorical_columns)
-                print("Plottable columns:", plottable_columns)
-                print("Selected column:", context["selected_column"])
-                print("Chart type:", context["chart_type"])
+            context["selected_column"] = selected_column
 
-                # ------------------------------------------
-                # Generate main chart
-                # ------------------------------------------
-                if context["selected_column"]:
-                    chart_filename, chart_error = generate_chart(
-                        df=df,
-                        selected_column=context["selected_column"],
-                        chart_type=context["chart_type"],
-                        numeric_columns=numeric_columns,
-                        static_folder=current_app.static_folder
-                    )
+            # Generate chart
+            chart_filename, chart_error = generate_chart(
+                df,
+                selected_column,
+                chart_type,
+                numeric_columns,
+                current_app.static_folder,
+                current_user.id
+            )
 
-                    context["chart_filename"] = chart_filename
+            context["chart_filename"] = chart_filename
+            if chart_error:
+                context["error"] = chart_error
 
-                    print("Generated chart filename:", chart_filename)
-                    print("Chart error:", chart_error)
+            # Generate heatmap
+            heatmap_filename, heatmap_error = generate_heatmap(
+                df,
+                numeric_columns,
+                current_app.static_folder,
+                current_user.id
+            )
 
-                    # If chart-specific error occurs, show it
-                    if chart_error:
-                        context["error"] = chart_error
+            context["heatmap_filename"] = heatmap_filename
+            if heatmap_error and not context["error"]:
+                context["error"] = heatmap_error
 
-                # ------------------------------------------
-                # Generate correlation heatmap
-                # ------------------------------------------
-                heatmap_filename, heatmap_error = generate_heatmap(
-                    df=df,
-                    numeric_columns=numeric_columns,
-                    static_folder=current_app.static_folder
-                )
-
-                context["heatmap_filename"] = heatmap_filename
-
-                print("Generated heatmap filename:", heatmap_filename)
-                print("Heatmap error:", heatmap_error)
-
-                # Show heatmap error only if no previous error exists
-                if heatmap_error and not context["error"]:
-                    context["error"] = heatmap_error
-
-            except Exception as e:
-                context["error"] = f"Error processing data: {e}"
-
-    # Render the protected dashboard page
     return render_template("dashboard.html", **context)
 
 
 # --------------------------------------------------
-# Download route
+# Download Route
 # --------------------------------------------------
 @dashboard_bp.route("/download")
 @login_required
 def download_file():
     """
-    Download the last uploaded CSV file.
-
-    This route is protected, so only logged-in users can use it.
+    Download user-specific CSV file.
     """
+    user_upload_folder = get_user_upload_folder()
+
     file_path = os.path.join(
-        current_app.config["UPLOAD_FOLDER"],
+        user_upload_folder,
         current_app.config["LAST_UPLOADED_FILE"]
     )
 
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
 
-    return "No file available for download."
+    return "No file available."

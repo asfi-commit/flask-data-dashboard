@@ -5,3 +5,5 @@ uploads/*
 static/chart.png
 static/heatmap.png
 instance/*.db
+test.py
+old_app_backup.py

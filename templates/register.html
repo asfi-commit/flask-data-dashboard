@@ -3,6 +3,43 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
-    <h1>Register Page</h1>
-    <p>Registration form will be added in the next step.</p>
+    <h1>Create Account</h1>
+    <p>Register to access the dashboard services.</p>
+
+    <form action="{{ url_for('auth.register') }}" method="POST">
+        <div>
+            <label for="username">Username</label><br>
+            <input type="text" name="username" id="username" required>
+        </div>
+
+        <br>
+
+        <div>
+            <label for="email">Email</label><br>
+            <input type="email" name="email" id="email" required>
+        </div>
+
+        <br>
+
+        <div>
+            <label for="password">Password</label><br>
+            <input type="password" name="password" id="password" required>
+        </div>
+
+        <br>
+
+        <div>
+            <label for="confirm_password">Confirm Password</label><br>
+            <input type="password" name="confirm_password" id="confirm_password" required>
+        </div>
+
+        <br>
+
+        <button type="submit">Register</button>
+    </form>
+
+    <p>
+        Already have an account?
+        <a href="{{ url_for('auth.login') }}">Login here</a>
+    </p>
 {% endblock %}

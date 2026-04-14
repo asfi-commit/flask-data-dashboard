@@ -3,10 +3,14 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <h1>Dashboard</h1>
-    <p>Your data dashboard will be moved here step by step.</p>
+    <h1>Welcome to the Dashboard</h1>
+
+    <p>Hello, <strong>{{ user.username }}</strong>!</p>
+    <p>Your email: {{ user.email }}</p>
+
+    <p>This dashboard is now protected by login authentication.</p>
+
     <p>
-        <a href="/login">Login</a> |
-        <a href="/register">Register</a>
+        <a href="{{ url_for('auth.logout') }}">Logout</a>
     </p>
 {% endblock %}

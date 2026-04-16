@@ -2,103 +2,297 @@
 
 {% block title %}Dashboard{% endblock %}
 
-{% block content %}
-    <h1>CSV Data Analysis Dashboard</h1>
-    <p>Welcome, <strong>{{ user.username }}</strong>!</p>
-    <p>Your email: {{ user.email }}</p>
+{% block layout %}
+<div class="dashboard-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar shadow-sm">
+        <div>
+            <div class="sidebar-brand mb-4">
+                <h4 class="mb-1"><i class="bi bi-bar-chart-line-fill me-2"></i>DataDash</h4>
+                <small class="text-secondary">ML & Data Science Dashboard</small>
+            </div>
 
-    <p>
-        <a href="{{ url_for('auth.logout') }}">Logout</a>
-    </p>
+            <nav class="nav flex-column sidebar-nav">
+                <a class="nav-link active" href="{{ url_for('dashboard.home') }}">
+                    <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                </a>
+                <a class="nav-link" href="#upload-section">
+                    <i class="bi bi-upload me-2"></i>Upload Dataset
+                </a>
+                <a class="nav-link" href="#dataset-info">
+                    <i class="bi bi-table me-2"></i>Dataset Info
+                </a>
+                <a class="nav-link" href="#preview-section">
+                    <i class="bi bi-eye me-2"></i>Preview
+                </a>
+                <a class="nav-link" href="#charts-section">
+                    <i class="bi bi-pie-chart me-2"></i>Charts
+                </a>
+            </nav>
+        </div>
 
-    <hr>
+        <div class="sidebar-footer mt-4">
+            <div class="small text-secondary mb-2">Logged in as</div>
+            <div class="fw-semibold">{{ user.username }}</div>
+            <div class="small text-secondary mb-3">{{ user.email }}</div>
 
-    <form action="{{ url_for('dashboard.home') }}" method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".csv">
-        <button type="submit">Upload CSV</button>
-    </form>
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleTheme()">
+                    <i id="themeIcon" class="bi bi-moon-stars-fill me-2"></i>Toggle Theme
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm">
+                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+    </aside>
 
-    {% if file_name %}
-        <hr>
+    <!-- Main -->
+    <main class="main-panel">
+        <!-- Header -->
+        <div class="page-header card border-0 shadow-sm mb-4">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h2 class="mb-1">CSV Data Analysis Dashboard</h2>
+                    <p class="mb-0 text-secondary">
+                        Analyze datasets with statistics, charts, and heatmaps.
+                    </p>
+                </div>
 
-        <h2>File Information</h2>
-        <p><strong>File Name:</strong> {{ file_name }}</p>
-        <p><strong>Number of Rows:</strong> {{ num_rows }}</p>
-        <p><strong>Number of Columns:</strong> {{ num_cols }}</p>
+                <div class="header-user text-end">
+                    <div class="fw-semibold">{{ user.username }}</div>
+                    <div class="text-secondary small">{{ user.email }}</div>
+                </div>
+            </div>
+        </div>
 
-        <p>
-            <a href="{{ url_for('dashboard.download_file') }}">
-                <button type="button">Download Current CSV</button>
-            </a>
-        </p>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {% if category == 'success' %}alert-success{% else %}alert-danger{% endif %} shadow-sm">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        <h3>Column Names</h3>
-        <ul>
-            {% for column in column_names %}
-                <li>{{ column }}</li>
-            {% endfor %}
-        </ul>
+        <!-- Upload -->
+        <section class="card border-0 shadow-sm mb-4" id="upload-section">
+            <div class="card-body">
+                <h4 class="card-title mb-3">
+                    <i class="bi bi-upload me-2"></i>Upload Dataset
+                </h4>
 
-        <h3>Dataset Info</h3>
-        {% if dataset_info %}
-            {{ dataset_info | safe }}
+                <form action="{{ url_for('dashboard.home') }}" method="POST" enctype="multipart/form-data">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="file" class="form-label">Select CSV File</label>
+                            <input type="file" class="form-control" name="file" id="file" accept=".csv">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-cloud-arrow-up me-2"></i>Upload CSV
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        {% if file_name %}
+            <!-- Stats cards -->
+            <section class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon bg-primary-subtle text-primary">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <div class="stat-label">File Name</div>
+                            <div class="stat-value stat-file">{{ file_name }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon bg-success-subtle text-success">
+                                <i class="bi bi-list-ol"></i>
+                            </div>
+                            <div class="stat-label">Rows</div>
+                            <div class="stat-value">{{ num_rows }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 stat-card">
+                        <div class="card-body">
+                            <div class="stat-icon bg-warning-subtle text-warning">
+                                <i class="bi bi-columns-gap"></i>
+                            </div>
+                            <div class="stat-label">Columns</div>
+                            <div class="stat-value">{{ num_cols }}</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Download -->
+            <section class="card border-0 shadow-sm mb-4">
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div>
+                        <h5 class="mb-1"><i class="bi bi-download me-2"></i>Export</h5>
+                        <p class="mb-0 text-secondary">Download the current uploaded dataset.</p>
+                    </div>
+
+                    <a href="{{ url_for('dashboard.download_file') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-download me-2"></i>Download Current CSV
+                    </a>
+                </div>
+            </section>
+
+            <!-- Columns -->
+            <section class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="bi bi-tags me-2"></i>Column Names</h5>
+                    <div class="row">
+                        {% for column in column_names %}
+                            <div class="col-md-4 col-sm-6 mb-2">
+                                <span class="badge text-bg-light border px-3 py-2 w-100 text-start">
+                                    {{ column }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dataset info -->
+            <section class="card border-0 shadow-sm mb-4" id="dataset-info">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="bi bi-table me-2"></i>Dataset Info</h5>
+                    <div class="table-responsive">
+                        {{ dataset_info | safe }}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Preview -->
+            <section class="card border-0 shadow-sm mb-4" id="preview-section">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="bi bi-eye me-2"></i>First 5 Rows</h5>
+                    <div class="table-responsive">
+                        {{ preview_data | safe }}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Missing -->
+            <section class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="bi bi-exclamation-circle me-2"></i>Missing Values</h5>
+                    <div class="table-responsive">
+                        {{ missing_values | safe }}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Summary -->
+            <section class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="bi bi-clipboard-data me-2"></i>Summary Statistics</h5>
+                    <div class="table-responsive">
+                        {{ summary_stats | safe }}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chart controls -->
+            {% if plottable_columns %}
+                <section class="card border-0 shadow-sm mb-4" id="charts-section">
+                    <div class="card-body">
+                        <h5 class="mb-3"><i class="bi bi-bar-chart me-2"></i>Generate Chart</h5>
+
+                        <form action="{{ url_for('dashboard.home') }}" method="POST">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-5">
+                                    <label for="selected_column" class="form-label">Select Column</label>
+                                    <select name="selected_column" id="selected_column" class="form-select">
+                                        {% for col in plottable_columns %}
+                                            <option value="{{ col }}" {% if col == selected_column %}selected{% endif %}>
+                                                {{ col }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label for="chart_type" class="form-label">Select Chart Type</label>
+                                    <select name="chart_type" id="chart_type" class="form-select">
+                                        <option value="histogram" {% if chart_type == 'histogram' %}selected{% endif %}>Histogram</option>
+                                        <option value="bar" {% if chart_type == 'bar' %}selected{% endif %}>Bar Chart</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-graph-up-arrow me-2"></i>Generate
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="alert alert-info mt-3 mb-0">
+                            <strong>Note:</strong> Histogram works only for numeric columns. Bar chart works for both numeric and categorical columns.
+                        </div>
+                    </div>
+                </section>
+            {% endif %}
+
+            <!-- Chart tabs -->
+            <section class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-3" id="chartTabs" role="tablist">
+                        {% if chart_filename %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart-pane" type="button" role="tab">
+                                    <i class="bi bi-bar-chart-fill me-2"></i>Generated Chart
+                                </button>
+                            </li>
+                        {% endif %}
+
+                        {% if heatmap_filename %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if not chart_filename %}active{% endif %}" id="heatmap-tab" data-bs-toggle="tab" data-bs-target="#heatmap-pane" type="button" role="tab">
+                                    <i class="bi bi-grid-3x3-gap-fill me-2"></i>Correlation Heatmap
+                                </button>
+                            </li>
+                        {% endif %}
+                    </ul>
+
+                    <div class="tab-content" id="chartTabsContent">
+                        {% if chart_filename %}
+                            <div class="tab-pane fade show active" id="chart-pane" role="tabpanel">
+                                <div class="chart-panel text-center">
+                                    <img src="{{ url_for('static', filename=chart_filename) }}" alt="Generated Chart" class="img-fluid rounded chart-image">
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if heatmap_filename %}
+                            <div class="tab-pane fade {% if not chart_filename %}show active{% endif %}" id="heatmap-pane" role="tabpanel">
+                                <div class="chart-panel text-center">
+                                    <img src="{{ url_for('static', filename=heatmap_filename) }}" alt="Correlation Heatmap" class="img-fluid rounded chart-image">
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
         {% endif %}
-
-        <h3>First 5 Rows</h3>
-        {% if preview_data %}
-            {{ preview_data | safe }}
-        {% endif %}
-
-        <h3>Missing Values</h3>
-        {% if missing_values %}
-            {{ missing_values | safe }}
-        {% endif %}
-
-        <h3>Summary Statistics</h3>
-        {% if summary_stats %}
-            {{ summary_stats | safe }}
-        {% endif %}
-
-        {% if plottable_columns %}
-            <h3>Generate Chart</h3>
-            <form action="{{ url_for('dashboard.home') }}" method="POST">
-                <label for="selected_column">Select Column:</label>
-                <select name="selected_column" id="selected_column">
-                    {% for col in plottable_columns %}
-                        <option value="{{ col }}" {% if col == selected_column %}selected{% endif %}>
-                            {{ col }}
-                        </option>
-                    {% endfor %}
-                </select>
-
-                <label for="chart_type">Select Chart Type:</label>
-                <select name="chart_type" id="chart_type">
-                    <option value="histogram" {% if chart_type == 'histogram' %}selected{% endif %}>
-                        Histogram
-                    </option>
-                    <option value="bar" {% if chart_type == 'bar' %}selected{% endif %}>
-                        Bar Chart
-                    </option>
-                </select>
-
-                <button type="submit">Generate Chart</button>
-            </form>
-
-            <p>
-                <strong>Note:</strong>
-                Histogram works only for numeric columns.
-                Bar chart works for both numeric and categorical columns.
-            </p>
-        {% endif %}
-
-        {% if chart_filename %}
-            <h3>Chart</h3>
-            <img src="{{ url_for('static', filename=chart_filename) }}" alt="Generated Chart">
-        {% endif %}
-
-        {% if heatmap_filename %}
-            <h3>Correlation Heatmap</h3>
-            <img src="{{ url_for('static', filename=heatmap_filename) }}" alt="Correlation Heatmap">
-        {% endif %}
-    {% endif %}
+    </main>
+</div>
 {% endblock %}
